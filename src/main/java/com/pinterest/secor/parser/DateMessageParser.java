@@ -40,16 +40,29 @@ import com.pinterest.secor.message.Message;
 public class DateMessageParser extends MessageParser {
     private static final Logger LOG = LoggerFactory.getLogger(DateMessageParser.class);
     protected static final String defaultDate = "dt=1970-01-01";
-    protected static final String defaultFormatter = "yyyy-MM-dd";
+    protected static final String defaultHour = "hr=00";
+    protected static final String defaultDateFormatter = "yyyy-MM-dd";
+    protected static final String defaultHourFormatter = "HH";
+    private final boolean mUsingHourly;
 
     public DateMessageParser(SecorConfig config) {
         super(config);
+        mUsingHourly = usingHourly(config);
+        LOG.info("UsingHourly: {}", mUsingHourly);
     }
 
     @Override
     public String[] extractPartitions(Message message) {
         JSONObject jsonObject = (JSONObject) JSONValue.parse(message.getPayload());
-        String result[] = { defaultDate };
+        String result[];
+        if (mUsingHourly) {
+          result = new String[2];
+          result[0] = defaultDate;
+          result[1] = defaultHour;
+        } else {
+          result = new String[1];
+          result[0] = defaultDate;
+        }
 
         if (jsonObject != null) {
             Object fieldValue = jsonObject.get(mConfig.getMessageTimestampName());
@@ -57,19 +70,32 @@ public class DateMessageParser extends MessageParser {
             if (fieldValue != null && inputPattern != null) {
                 try {
                     SimpleDateFormat inputFormatter = new SimpleDateFormat(inputPattern.toString());
-                    SimpleDateFormat outputFormatter = new SimpleDateFormat(defaultFormatter);
+                    SimpleDateFormat outputDateFormatter = new SimpleDateFormat(defaultDateFormatter);
+                    SimpleDateFormat outputHourFormatter = new SimpleDateFormat(defaultHourFormatter);
                     Date dateFormat = inputFormatter.parse(fieldValue.toString());
-                    result[0] = "dt=" + outputFormatter.format(dateFormat);
-                    return result;
+                    if (mUsingHourly) {
+                        result[0] = "dt=" + outputDateFormatter.format(dateFormat);
+                        result[1] = "hr=" + outputHourFormatter.format(dateFormat);
+                    } else {
+                        result[0] = "dt=" + outputDateFormatter.format(dateFormat);
+                    }
                 } catch (Exception e) {
-
-                    LOG.warn("Impossible to convert date = {} for the input pattern = {} . Using date default = {}",
+                    if (mUsingHourly) {
+                        LOG.warn("Impossible to convert date = {} for the input pattern = {} . Using date default = {}/{}",
+                            fieldValue.toString(), inputPattern.toString(), result[0], result[1]);
+                    } else { 
+                        LOG.warn("Impossible to convert date = {} for the input pattern = {} . Using date default = {}",
                             fieldValue.toString(), inputPattern.toString(), result[0]);
+                    }
                 }
             }
         }
 
         return result;
+    }
+
+    static boolean usingHourly(SecorConfig config) {
+      return config.getBoolean("partitioner.granularity.hour", false);
     }
 
 }
