@@ -204,6 +204,7 @@ public class KafkaClient {
                 return null;
             }
             consumer = createConsumer(topicPartition);
+            LOG.debug("committed offset {}", committedOffset); 
             return getMessage(topicPartition, committedOffset, consumer);
         } finally {
             if (consumer != null) {
