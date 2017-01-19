@@ -92,7 +92,7 @@ public class Uploader {
                     uploadHandles.add(mUploadManager.upload(path));
                 }
                 for (Handle<?> uploadHandle : uploadHandles) {
-                    uploadHandle.get();
+                	uploadHandle.get();
                 }
                 mFileRegistry.deleteTopicPartition(topicPartition);
                 mZookeeperConnector.setCommittedOffsetCount(topicPartition, lastSeenOffset + 1);
